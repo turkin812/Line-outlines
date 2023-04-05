@@ -1,65 +1,96 @@
+#Библиотеки
+import math
 import numpy as np
 import matplotlib.pyplot as plt
 
-
 # Определение констант
-L = 1
-alpha_1 = np.pi/6
-alpha_3 = 0
-c = 3e8
-f = 139.466 #139.533
-dT_0_squared = 1
-T_0_squared = 0.5
+L = 1 #Расстояние между зеркалами
+alpha_1 = np.pi/6 #Угол между нормалью к поверхности зеркала и осью Z
+c = 3e8 #Скорость света
+dT_0_squared = 1 #d(|T0|^2)/df
+T_0_squared = 0.5 #|T0|^2
+omega = 2 * np.pi #Циклическая частота
 
+#Все параметры из первой серии линий
+#Параметры для эпсилон1
+f_epsi1 = np.array([132.366, 132.433]) #Частота
+f_width1 = 0.05 * 10**3 #Ширина df
+epsi01 = 10**6 #Epsi1
+
+#Параметры для эпсилон3
+f_epsi3 = np.arange(132.3, 132.45, 0.05) #Частота для epsi3: [132.3, 132.35, 132.4, 132.45]
+f_width3 = np.arange(0.03 * 10**6, 0.06 * 10**6, 0.01 * 10**6) #Ширина df: [10, 8, 6, 4] * 10^6
+epsi03 = np.arange(10 * 10**6, 3* 10**6, -2* 10**6) #Epsi3
 
 # Определение функций
 #Лоренцевы контуры
-def epsi_11(f):
-	# f_j10 = np.array([132.366, 132.433, 134.266, 134.333, 139.466, 139.533])
-	f_j10 = np.array([134.266, 134.333, 139.466, 139.533])
-	df_j1 = 0.05
-	epsi_j10 = np.array([5e-6 / f_j10[i] for i in range(4)])
-	return 1 + np.sum((epsi_j10 * (f_j10**2 - f**2) * f_j10 * df_j1) / ((f_j10**2 - f**2)**2 + df_j1**2 * f**2))
+#Первая цифра - какой эпсилон, вторая цифра - количество штрихов
+def get_epsi_11(f):
+	arr = []
+	for i in range(len(f)):
+		value = 0
+		for j in range(len(f_epsi1)):
+			value += (epsi01 * (f_epsi1[j]**2 - f[i]**2) * f_epsi1[j] * f_width1) / ((f_epsi1[j]**2 - f[i]**2)**2 + f_width1**2 * f[i]**2)
+		arr.append(1 + value)
+	return arr
 
-def epsi_12(f):
-	f_j10 = np.array([132.366, 132.433, 134.266, 134.333, 139.466, 139.533])
-	df_j1 = 0.05
-	epsi_j10 = np.array([5e-6 / f_j10[i] for i in range(4)])
-	return np.sum((epsi_j10 * f_j10**2 * f_j10 * f**2) / ((f_j10**2 - f**2)**2 + df_j1**2 * f**2))
+def get_epsi_12(f):
+	arr = []
+	for i in range(len(f)):
+		value = 0
+		for j in range(len(f_epsi1)):
+			value += (epsi01 * f_width1**2 * f_epsi1[j] * f[i]) / ((f_epsi1[j]**2 - f[i]**2)**2 + f_width1**2 * f[i]**2)
+		arr.append(1 + value)
+	return arr
 
-def epsi_31(f):
-	f_j30 = np.concatenate((
-		132.3 + 0.05 * np.arange(4),
-		# 134.2 + 0.05 * np.arange(4),
-		# 139.4 + 0.05 * np.arange(4)
-	))
-	df_j3 = np.array([0.001 * ((i/4) + 3) for i in range(4)])
-	epsi_j30 = np.array([0.002 * (5 - (i/4)) * df_j3[i-1] * f_j30[i-1] for i in range(4)])
-	asd = 0
-	return 1 + np.sum((epsi_j30 * (f_j30**2 - f**2) * f_j30 * df_j3) / ((f_j30**2 - f**2)**2 + df_j3**2 * f**2))
+def get_epsi_31(f):
+	arr = []
+	for i in range(len(f)):
+		value = 0
+		for j in range(len(f_epsi3)):
+			value += (epsi03[j] * (f_epsi3[j]**2 - f[i]**2) * f_epsi3[j] * f_width3[j]) / ((f_epsi3[j]**2 - f[i]**2)**2 + f_width3[j]**2 * f[i]**2)
+		arr.append(1 + value)
+	return arr
 
-def epsi_32(f):
-	f_j30 = np.concatenate((
-		132.3 + 0.05 * np.arange(4),
-		# 134.2 + 0.05 * np.arange(4),
-		# 139.4 + 0.05 * np.arange(4)
-	))
-	df_j3 = np.array([0.001 * ((i/4) + 3) for i in range(4)])
-	epsi_j30 = np.array([0.002 * (5 - (i/4)) * df_j3[i-1] * f_j30[i-1] for i in range(4)])
-	return np.sum((epsi_j30 * f_j30**2 * f_j30 * f**2) / ((f_j30**2 - f**2)**2 + df_j3**2 * f**2))
+def get_epsi_32(f):
+	arr = []
+	for i in range(len(f)):
+		value = 0
+		for j in range(len(f_epsi3)):
+			value += (epsi03[j] * f_width3[j]**2 * f_epsi3[j] * f[i]) / ((f_epsi3[j]**2 - f[i]**2)**2 + f_width3[j]**2 * f[i]**2)
+		arr.append(1 + value)
+	return arr
 
-def kz32(f):
-	omega = 2 * np.pi * f
-	return omega * epsi_32(f) / c * 2 * np.sqrt(epsi_31(f) * np.cos(alpha_1))
+def get_kz32(epsi31, epsi32):
+	arr = []
+	for i in range(len(epsi32)):
+		arr.append(omega * epsi32[i] / c * 2 * np.sqrt(epsi31[i] * np.cos(alpha_1)))
+	return arr
 
-def T_sample_squared(f):
-	return (T_0_squared + ((np.sqrt(epsi_31(f) * np.cos(alpha_1) / epsi_11(f) * np.cos(alpha_1))) - 1) * dT_0_squared * f) * np.exp(-2 * kz32(f) * L)
+def get_alpha_3(epsi31, epsi32):
+	arr = []
+	for i in range(len(epsi31)):
+		arr.append(math.asin((epsi31[i] * math.sin(math.radians(alpha_1))) / epsi32[i]))
+	return arr
 
+def T_sample_squared(f, f0):
+	arr = []
+	for i in range(len(f)):
+		arr.append((T_0_squared + ((np.sqrt(epsi3_arr[i] * np.cos(alpha_1) / epsi1_arr[i] * np.cos(alpha_3[i]))) - 1) * dT_0_squared * (f[i] - f0[i])) * np.exp(-2 * kz32[i] * L))
+	return arr
 
-# Создание массива значений f и T_sample_squared
-f_values = np.arange(139.4, 139.56, 0.05)
-T_sample_squared_values = T_sample_squared(f_values)
+#Остальные параметры
+width = 0.06 * 10**-3 #Ширина для центральной частоты
+f_values_center = np.linspace(132.3 - 3 * width, 132.3 + 3 * width, 60) #Центральная частота линии: (f0 - 3df), (f0 + 3df)
+f_values = np.array([f_values_center[i - 1] - 3 * width + i * width / 10 for i in range(1, 61)]) #Массив частот для как переменная для основной формулы и эпсилон
 
+epsi1_arr = get_epsi_11(f_values) #Эпсилон1 штрих
+epsi12_arr = get_epsi_12(f_values) #Эпсилон1 с двумя штрихами
+epsi3_arr = get_epsi_31(f_values) #Эпсилон3 с одним штрихом
+epsi32_arr = get_epsi_32(f_values) #Эпсилон3 с двумя штрихами
+kz32 = get_kz32(epsi3_arr, epsi32_arr) #Волновой вектор
+alpha_3 = get_alpha_3(epsi3_arr, epsi32_arr) #Альфа 3 через акрсинус
+T_sample_squared_values = T_sample_squared(f_values, f_values_center) #Коэффициент пропускания
 
 # Построение графика
 plt.plot(f_values, T_sample_squared_values)
